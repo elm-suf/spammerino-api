@@ -34,9 +34,9 @@ export const selectUsersSchema = z.object({
 })
 
 export type Emote = {
-  name: string;
-  link: string;
-  type: 'seventvemote' | 'ffzemote' | 'bttvemote' | 'twitchemote';
+    name: string;
+    link: string;
+    type: 'seventvemote' | 'ffzemote' | 'bttvemote' | 'twitchemote';
 };
 
 export const selectEmotesSchema = z.array(z.object({
@@ -44,3 +44,5 @@ export const selectEmotesSchema = z.array(z.object({
     link: z.string(),
     type: z.string(),
 }))
+
+export const selectSearchUsersSchema = z.array(selectUsersSchema)

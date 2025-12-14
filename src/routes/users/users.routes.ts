@@ -5,10 +5,37 @@ import { createErrorSchema, createMessageObjectSchema, IdParamsSchema, IdUUIDPar
 
 import { notFoundSchema } from "@/lib/constants";
 
-import { selectEmotesSchema, selectUsersSchema } from "./user.model";
+import { selectEmotesSchema, selectSearchUsersSchema, selectUsersSchema } from "./user.model";
 import createUsernameParamSchema from "@/validators/username-param-schema";
 
 const tags = ["Users"];
+
+export type SearchUsersRoute = typeof searchUsers;
+export const searchUsers = createRoute({
+  path: "/users/search/{userName}",
+  method: "get",
+  summary: "searchUsers",
+  description: "Search for users by their username",
+  request: {
+    params: createUsernameParamSchema("userName"),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      selectSearchUsersSchema,
+      "The requested user",
+    ),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "User not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(createUsernameParamSchema("userName")),
+      "Invalid userName error",
+    ),
+  },
+
+});
 
 export type GetUserByUsernameRoute = typeof getUserByUsername;
 export const getUserByUsername = createRoute({
@@ -34,7 +61,6 @@ export const getUserByUsername = createRoute({
       "Invalid userName error",
     ),
   },
-
 });
 
 export type GetEmotesByUsernameRoute = typeof getEmotesByUsername;

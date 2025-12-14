@@ -4,7 +4,7 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import { mapUser } from "./user.model";
 
 import { TwitchEmotes } from "../../core/twitch-emotes.service";
-import type { GetEmotesByUsernameRoute, GetUserByUsernameRoute } from "./users.routes";
+import type { GetEmotesByUsernameRoute, GetUserByUsernameRoute, SearchUsersRoute } from "./users.routes";
 
 // shared logic
 const _getUserByUsername = async (userName: string) => {
@@ -24,6 +24,18 @@ const _getUserEmotes = async (userId: number) => {
     return emotes;
 };
 
+const _searchUsers = async (userName: string) => {
+    console.log(`_searchUsers userName:`, userName);
+    const apiClient = TwitchApiSingleton.getInstance();
+
+    const data = await apiClient.search.searchChannels(userName, {
+        limit: 5,
+    });
+
+    const users = await Promise.all(data.data.map(el => el.getUser()));
+
+    return users.map(user => mapUser(user)).filter(user => user !== null).sort((a, b) => a.displayName.localeCompare(b.displayName));
+};
 
 export const getUserByUsername: AppRouteHandler<GetUserByUsernameRoute> = async (c) => {
     const { userName } = c.req.valid("param");
@@ -62,3 +74,21 @@ export const getEmotesByUsername: AppRouteHandler<GetEmotesByUsernameRoute> = as
     }
     return c.json(emotes, HttpStatusCodes.OK);
 };
+
+export const searchUsers: AppRouteHandler<SearchUsersRoute> = async (c) => {
+    const { userName } = c.req.valid("param");
+    const data = await _searchUsers(userName);
+
+    if (!data) {
+        return c.json(
+            {
+                message: `Users "${userName}" not found`,
+            },
+            HttpStatusCodes.NOT_FOUND,
+        );
+    }
+
+    return c.json(data, HttpStatusCodes.OK);
+};
+
+
