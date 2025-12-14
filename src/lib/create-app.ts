@@ -8,21 +8,17 @@ import { defaultHook } from "stoker/openapi";
 import { pinoLogger } from "@/middlewares/pino-logger";
 
 import type { AppBindings, AppOpenAPI } from "./types";
-import { cors } from "hono/cors";
 
 export function createRouter() {
   return new OpenAPIHono<AppBindings>({
     strict: false,
     defaultHook,
-    
   });
 }
 
 export default function createApp() {
   const app = createRouter();
-  app
-    .use(cors())
-    .use(requestId())
+  app.use(requestId())
     .use(serveEmojiFavicon("📝"))
     .use(pinoLogger());
 
