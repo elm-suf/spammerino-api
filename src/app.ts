@@ -2,10 +2,12 @@ import configureOpenAPI from "@/lib/configure-open-api";
 import createApp from "@/lib/create-app";
 import index from "@/routes/index.route";
 import users from "@/routes/users/users.index";
+import { Hono } from "hono";
 
-const app = createApp();
+const app = new Hono();
+const api = createApp();
 
-configureOpenAPI(app);
+configureOpenAPI(api);
 
 const routes = [
   index,
@@ -13,9 +15,11 @@ const routes = [
 ] as const;
 
 routes.forEach((route) => {
-  app.route("/", route);
+  api.route("/", route);
 });
 
 export type AppType = typeof routes[number];
+
+app.route("/", api);
 
 export default app;

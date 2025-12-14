@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 
-import app from "./app";
+import api from "./app";
 import env from "./env";
 
 const port = env.PORT;
@@ -9,6 +9,6 @@ console.log(`Server is running on port http://localhost:${port}`);
 console.log(`Docs running on port http://localhost:${port}/reference`);
 
 serve({
-  fetch: app.fetch,
+  fetch: api.fetch,
   port,
 });
