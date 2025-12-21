@@ -11,6 +11,7 @@ import { TwitchApiSingleton } from "./twitch-singleton";
 // BTTV
 interface RawBttvChannelEmotesResponse {
   channelEmotes: BTTVEmote[];
+  sharedEmotes: BTTVEmote[];
 }
 type RawBttvGlobalEmotesResponse = BTTVEmote[];
 interface BTTVEmote {
@@ -117,9 +118,8 @@ export class TwitchEmotes {
     }));
 
     const channelEmotes = this.fetchJson<RawBttvChannelEmotesResponse>(Constants.BTTV.Channel(id))
-      .then(data => data.channelEmotes)
+      .then(data => [...data.channelEmotes, ...data.sharedEmotes])
       .then(emotes => mapBTTV(emotes))
-
       .catch(() => new Array<Emote>());
 
     const globalEmotes = this.fetchJson<RawBttvGlobalEmotesResponse>(Constants.BTTV.Global)
@@ -136,7 +136,7 @@ export class TwitchEmotes {
   private async getSevenTVEmotes(id: number): Promise<Emote[]> {
     const mapSevenTV = (emotes: { id: string; name: string }[]): Emote[] => emotes.map(e => ({
       name: e.name,
-      link: Constants.SevenTV.CDN(e.id, 0),
+      link: Constants.SevenTV.CDN(e.id, 1),
       type: "seventvemote",
     }));
 

@@ -10,7 +10,7 @@ export const Constants = {
   SevenTV: {
     Global: "https://7tv.io/v3/emote-sets/global",
     Channel: (id: number) => `https://7tv.io/v3/users/twitch/${id}`,
-    CDN: (id: string, size: number) => `https://cdn.7tv.app/emote/${id}/${size}`,
+    CDN: (id: string, size: number) => `https://cdn.7tv.app/emote/${id}/${size}x.avif`,
   },
   FFZ: {
     sets: {
