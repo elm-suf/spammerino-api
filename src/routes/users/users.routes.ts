@@ -6,7 +6,7 @@ import { createErrorSchema, createMessageObjectSchema } from "stoker/openapi/sch
 import { notFoundSchema } from "@/lib/constants";
 import createUsernameParamSchema from "@/validators/username-param-schema";
 
-import { selectEmotesSchema, selectSearchUsersSchema, selectUsersSchema } from "./user.model";
+import { selectBadgesSchema, selectEmotesSchema, selectSearchUsersSchema, selectUsersSchema } from "./user.model";
 
 const tags = ["Users"];
 
@@ -82,6 +82,32 @@ export const getEmotesByUsername = createRoute({
     [HttpStatusCodes.NOT_FOUND]: jsonContent(
       notFoundSchema,
       "User emotes not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(createMessageObjectSchema("userName")),
+      "Invalid userName error",
+    ),
+  },
+});
+
+export type GetBadgesByUsernameRoute = typeof getBadgesByUsername;
+export const getBadgesByUsername = createRoute({
+  path: "/users/{userName}/badges",
+  method: "get",
+  operationId: "getBadgesByUsername",
+  summary: "Get available badges for user channel",
+  request: {
+    params: createUsernameParamSchema("userName"),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      selectBadgesSchema,
+      "The requested user's badges",
+    ),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "User badges not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(createMessageObjectSchema("userName")),

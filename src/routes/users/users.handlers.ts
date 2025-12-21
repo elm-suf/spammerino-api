@@ -4,7 +4,7 @@ import type { AppRouteHandler } from "@/lib/types";
 
 import { TwitchApiSingleton } from "@/core/twitch-singleton";
 
-import type { GetEmotesByUsernameRoute, GetUserByUsernameRoute, SearchUsersRoute } from "./users.routes";
+import type { GetBadgesByUsernameRoute, GetEmotesByUsernameRoute, GetUserByUsernameRoute, SearchUsersRoute } from "./users.routes";
 
 import { TwitchEmotes } from "../../core/twitch-emotes.service";
 import { mapUser } from "./user.model";
@@ -40,6 +40,15 @@ async function _searchUsers(userName: string) {
 
   return users.map(user => mapUser(user)).filter(user => user !== null).sort((a, b) => a.displayName.localeCompare(b.displayName));
 };
+
+async function _getUserBadges(userId: number) {
+  if (!userId) {
+    return null;
+  }
+  const service = new TwitchEmotes();
+  const badges = await service.fetchBadges(userId);
+  return badges;
+}
 
 export const getUserByUsername: AppRouteHandler<GetUserByUsernameRoute> = async (c) => {
   const { userName } = c.req.valid("param");
@@ -95,4 +104,30 @@ export const searchUsers: AppRouteHandler<SearchUsersRoute> = async (c) => {
   }
 
   return c.json(data, HttpStatusCodes.OK);
+};
+
+export const getBadgesByUsername: AppRouteHandler<GetBadgesByUsernameRoute> = async (c) => {
+  const { userName } = c.req.valid("param");
+
+  const getUserBadgesByUsername = async (userName: string) => {
+    // call getOne to get userId
+    const user = await _getUserByUsername(userName);
+    if (!user) {
+      return null;
+    }
+
+    const badges = await _getUserBadges(+user.id);
+    return badges;
+  };
+
+  const badges = await getUserBadgesByUsername(userName);
+  if (!badges) {
+    return c.json(
+      {
+        message: `User "${userName}" not found`,
+      },
+      HttpStatusCodes.NOT_FOUND,
+    );
+  }
+  return c.json(badges, HttpStatusCodes.OK);
 };

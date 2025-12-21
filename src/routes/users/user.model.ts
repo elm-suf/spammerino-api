@@ -47,3 +47,15 @@ const emoteSchema = z.object({
 export const selectEmotesSchema = z.array(emoteSchema).openapi("Emote");
 
 export const selectSearchUsersSchema = z.array(selectUsersSchema);
+
+export interface Badge {
+  name: string;
+  link: string;
+}
+
+export const badgeSchema = z.object({
+  name: z.string(),
+  link: z.string(),
+}).openapi("Badge");
+
+export const selectBadgesSchema = z.array(badgeSchema).openapi("Badge");

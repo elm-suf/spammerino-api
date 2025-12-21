@@ -3,9 +3,10 @@ import { AppTokenAuthProvider } from "@twurple/auth";
 
 import env from "@/env";
 
-import type { Emote } from "../routes/users/user.model";
+import type { Badge, Emote } from "../routes/users/user.model";
 
 import { Constants } from "./constants";
+import { TwitchApiSingleton } from "./twitch-singleton";
 
 // BTTV
 interface RawBttvChannelEmotesResponse {
@@ -37,18 +38,38 @@ interface RawSevenTVGlobalEmotesResponse {
 }
 
 export class TwitchEmotes {
-  apiClient: ApiClient;
+  apiClient = TwitchApiSingleton.getInstance();
 
-  constructor() {
-    if (!env.TWITCH_CLIENT_ID || !env.TWITCH_CLIENT_SECRET) {
-      throw new Error("Missing Twitch credentials");
-    }
+  async fetchBadges(userId: number): Promise<Badge[]> {
+    const channelBadges = this.apiClient.chat.getChannelBadges(userId)
+      .then((data) => {
+        return data.map((badgeSet) => {
+          const mapped = badgeSet.versions.map<Badge>(version => ({
+            name: `${badgeSet.id}/${version.id}`,
+            link: version.getImageUrl(1) ?? "",
+          }));
 
-    const authProvider = new AppTokenAuthProvider(
-      env.TWITCH_CLIENT_ID,
-      env.TWITCH_CLIENT_SECRET,
+          return mapped;
+        }).flat();
+      })
+      .catch(() => new Array<Badge>());
+
+    const globalBadges = this.apiClient.chat.getGlobalBadges()
+      .then((data) => {
+        return data.map((badgeSet) => {
+          const mapped = badgeSet.versions.map<Badge>(version => ({
+            name: `${badgeSet.id}/${version.id}`,
+            link: version.getImageUrl(1) ?? "",
+          }));
+
+          return mapped;
+        }).flat();
+      })
+      .catch(() => new Array<Badge>());
+
+    return Promise.all([channelBadges, globalBadges]).then(
+      badges => badges.flat(),
     );
-    this.apiClient = new ApiClient({ authProvider });
   }
 
   async fetchEmotes(userId: number): Promise<Emote[]> {
