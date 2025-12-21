@@ -1,55 +1,148 @@
-import TwitchEmoticons from '@mkody/twitch-emoticons';
-import env from '@/env';
-export type Emote = {
-  name: string;
-  link: string;
-  type: 'seventvemote' | 'ffzemote' | 'bttvemote' | 'twitchemote';
-};
+import { ApiClient } from "@twurple/api";
+import { AppTokenAuthProvider } from "@twurple/auth";
+
+import env from "@/env";
+
+import type { Emote } from "../routes/users/user.model";
+
+import { Constants } from "./constants";
+
+// BTTV
+interface RawBttvChannelEmotesResponse {
+  channelEmotes: BTTVEmote[];
+}
+type RawBttvGlobalEmotesResponse = BTTVEmote[];
+interface BTTVEmote {
+  id: string;
+  code: string;
+  imageType: string;
+  animated: boolean;
+  userId: string;
+}
+
+// 7TV
+interface RawSevenTVChannelEmotesResponse {
+  emote_set: {
+    emotes: {
+      id: string;
+      name: string;
+    }[];
+  };
+}
+interface RawSevenTVGlobalEmotesResponse {
+  emotes: {
+    id: string;
+    name: string;
+  }[];
+}
+
 export class TwitchEmotes {
-  fetcher: TwitchEmoticons.EmoteFetcher;
-  emoteParser: TwitchEmoticons.EmoteParser;
+  apiClient: ApiClient;
 
   constructor() {
-    const { EmoteFetcher, EmoteParser } = TwitchEmoticons;
-    const clientId = env['TWITCH_CLIENT_ID'];
-    const clientSecret = env['TWITCH_CLIENT_SECRET'];
-    this.fetcher = new EmoteFetcher(clientId, clientSecret);
-    this.emoteParser = new EmoteParser(this.fetcher, {
-      // Custom HTML format
-      template: '<img class="emote" alt="{name}" src="{link}">',
-      // Match without :colons:
-      match: /(\w+)+?/g,
-    });
+    if (!env.TWITCH_CLIENT_ID || !env.TWITCH_CLIENT_SECRET) {
+      throw new Error("Missing Twitch credentials");
+    }
+
+    const authProvider = new AppTokenAuthProvider(
+      env.TWITCH_CLIENT_ID,
+      env.TWITCH_CLIENT_SECRET,
+    );
+    this.apiClient = new ApiClient({ authProvider });
   }
 
-  parse(text: string, size?: number): string {
-    return this.emoteParser.parse(text, size);
+  async fetchEmotes(userId: number): Promise<Emote[]> {
+    const requests = [
+      this.getTwitchEmotes(userId),
+      this.getBTTVEmotes(userId),
+      this.getSevenTVEmotes(userId),
+    ];
+
+    const data = await Promise.all(requests).then(
+      emotes => emotes.flat(),
+    );
+    return data;
   }
 
-  async fetchEmotes(channelId: number) {
-    const emoteCollections = await Promise.all([
-      // global emotes
-      this.fetcher.fetchTwitchEmotes(),
-      this.fetcher.fetchBTTVEmotes(),
-      this.fetcher.fetchSevenTVEmotes(),
-      this.fetcher.fetchFFZEmotes(),
-      // channel emotes
-      this.fetcher.fetchTwitchEmotes(channelId),
-      this.fetcher.fetchBTTVEmotes(channelId),
-      this.fetcher.fetchSevenTVEmotes(channelId),
-      this.fetcher.fetchFFZEmotes(channelId),
-    ]);
+  private async getTwitchEmotes(id: number): Promise<Emote[]> {
+    const channelEmotes = this.apiClient.chat.getChannelEmotes(id)
+      .then(data => data.map<Emote>(emote => ({
+        name: emote.name,
+        link: emote.getFormattedImageUrl(),
+        type: "twitchemote",
+      })))
+      .catch(() => new Array<Emote>());
 
-    const emotesResponse = emoteCollections.flatMap(
-      (collection) => new Array(...collection.entries())
+    const globalEmotes = this.apiClient.chat.getGlobalEmotes()
+      .then(data => data.map<Emote>(emote => ({
+        name: emote.name,
+        link: emote.getFormattedImageUrl(),
+        type: "twitchemote",
+      })))
+      .catch(() => new Array<Emote>());
+
+    const data = await Promise.all([channelEmotes, globalEmotes]).then(
+      emotes => emotes.flat(),
     );
 
-    const emotes = emotesResponse.map<Emote>(([key, value]) => ({
-      name: key,
-      link: value.toLink(1),
-      type: value.constructor.name.toLowerCase() as Emote['type'],
+    return data;
+  }
+
+  private async getBTTVEmotes(id: number): Promise<Emote[]> {
+    const mapBTTV = (emotes: BTTVEmote[]): Emote[] => emotes.map(e => ({
+      name: e.code,
+      link: Constants.BTTV.CDN(e.id, 0),
+      type: "bttvemote",
     }));
 
-    return emotes;
+    const channelEmotes = this.fetchJson<RawBttvChannelEmotesResponse>(Constants.BTTV.Channel(id))
+      .then(data => data.channelEmotes)
+      .then(emotes => mapBTTV(emotes))
+
+      .catch(() => new Array<Emote>());
+
+    const globalEmotes = this.fetchJson<RawBttvGlobalEmotesResponse>(Constants.BTTV.Global)
+      .then(emotes => mapBTTV(emotes))
+      .catch(() => new Array<Emote>());
+
+    const data = await Promise.all([channelEmotes, globalEmotes]).then(
+      emotes => emotes.flat(),
+    );
+
+    return data;
+  }
+
+  private async getSevenTVEmotes(id: number): Promise<Emote[]> {
+    const mapSevenTV = (emotes: { id: string; name: string }[]): Emote[] => emotes.map(e => ({
+      name: e.name,
+      link: Constants.SevenTV.CDN(e.id, 0),
+      type: "seventvemote",
+    }));
+
+    const channelEmotes = this.fetchJson<RawSevenTVChannelEmotesResponse>(Constants.SevenTV.Channel(id))
+      .then(data => data.emote_set.emotes)
+      .then(emotes => mapSevenTV(emotes))
+      .catch(() => new Array<Emote>());
+
+    const globalEmotes = this.fetchJson<RawSevenTVGlobalEmotesResponse>(Constants.SevenTV.Global)
+      .then(data => data.emotes)
+      .then(emotes => mapSevenTV(emotes))
+      .catch(() => new Array<Emote>());
+
+    const data = await Promise.all([channelEmotes, globalEmotes]).then(
+      emotes => emotes.flat(),
+    );
+
+    return data;
+  }
+
+  // TODO:  handle ffz emotes
+
+  async fetchJson<T>(url: string): Promise<T> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return res.json() as Promise<T>;
   }
 }

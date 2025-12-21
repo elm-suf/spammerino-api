@@ -1,12 +1,12 @@
 import { createRoute } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent } from "stoker/openapi/helpers";
-import { createErrorSchema, createMessageObjectSchema, IdParamsSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
+import { createErrorSchema, createMessageObjectSchema } from "stoker/openapi/schemas";
 
 import { notFoundSchema } from "@/lib/constants";
+import createUsernameParamSchema from "@/validators/username-param-schema";
 
 import { selectEmotesSchema, selectSearchUsersSchema, selectUsersSchema } from "./user.model";
-import createUsernameParamSchema from "@/validators/username-param-schema";
 
 const tags = ["Users"];
 
@@ -14,10 +14,11 @@ export type SearchUsersRoute = typeof searchUsers;
 export const searchUsers = createRoute({
   path: "/users/search/{userName}",
   method: "get",
-  summary: "searchUsers",
-  description: "Search for users by their username",
+  operationId: "searchUsers",
+  summary: "Search for users by their username",
   request: {
     params: createUsernameParamSchema("userName"),
+
   },
   tags,
   responses: {
@@ -41,8 +42,8 @@ export type GetUserByUsernameRoute = typeof getUserByUsername;
 export const getUserByUsername = createRoute({
   path: "/users/{userName}",
   method: "get",
-  summary: "getUserByUsername",
-  description: "Get a user by their username",
+  operationId: "getUserByUsername",
+  summary: "Get a user by their username",
   request: {
     params: createUsernameParamSchema("userName"),
   },
@@ -67,8 +68,8 @@ export type GetEmotesByUsernameRoute = typeof getEmotesByUsername;
 export const getEmotesByUsername = createRoute({
   path: "/users/{userName}/emotes",
   method: "get",
-  summary: "getEmotesByUsername",
-  description: "Get a user's emotes by their username",
+  operationId: "getEmotesByUsername",
+  summary: "Get a user's emotes by their username",
   request: {
     params: createUsernameParamSchema("userName"),
   },
@@ -88,4 +89,3 @@ export const getEmotesByUsername = createRoute({
     ),
   },
 });
-
